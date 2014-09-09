@@ -63,12 +63,12 @@
   * @{
   */ 
 #define USBD_LANGID_STRING              0x409
-#define USBD_MANUFACTURER_STRING        "Watt Devices"
+#define USBD_MANUFACTURER_STRING        "STMicroelectronics"
 
 #define USBD_PRODUCT_HS_STRING          "DFU in HS mode"
 #define USBD_SERIALNUMBER_HS_STRING     "00000000010B"
 
-#define USBD_PRODUCT_FS_STRING          "WattStrip DFU Mode"
+#define USBD_PRODUCT_FS_STRING          "DFU in FS mode"
 #define USBD_SERIALNUMBER_FS_STRING     "000000000001"
 
 #define USBD_CONFIGURATION_HS_STRING    "DFU Config"
