@@ -25,11 +25,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usb_lib.h"
+//#include "usb_lib.h"
+//#include "usb_conf.h"
+//#include "usb_prop.h"
+//#include "usb_pwr.h"
+//#include "dfu_mal.h"
+
+#include "usbd_dfu_core.h"
+#include "usbd_usr.h"
+#include "usbd_desc.h"
 #include "usb_conf.h"
-#include "usb_prop.h"
-#include "usb_pwr.h"
-#include "dfu_mal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -43,11 +48,16 @@ uint8_t OTA_FLASH_AVAILABLE = 0;	//0, 1
 uint8_t USB_DFU_MODE = 0;			//0, 1
 uint8_t FACTORY_RESET_MODE = 0;		//0, 1
 
+/* LED to flash */
+Led_TypeDef led;
+
 uint8_t DeviceState;
 uint8_t DeviceStatus[6];
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 uint32_t ApplicationAddress;
+
+USB_OTG_CORE_HANDLE		USB_OTG_FS_dev;
 
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
@@ -65,11 +75,11 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 int main(void)
 {
 	/*
-        At this stage the microcontroller clock setting is already configured, 
-        this is done through SystemInit() function which is called from startup
-        file (startup_stm32f10x_md.s) before to branch to application main.
-        To reconfigure the default setting of SystemInit() function, refer to
-        system_stm32f10x.c file
+	At this stage the microcontroller clock setting is already configured, 
+	this is done through SystemInit() function which is called from startup
+	file (startup_stm32f10x_md.s) before to branch to application main.
+	To reconfigure the default setting of SystemInit() function, refer to
+	system_stm32f10x.c file
 	 */
 
 	// FLASH_WriteProtection_Enable(BOOTLOADER_FLASH_PAGES);
@@ -106,16 +116,16 @@ int main(void)
 
 	// 0x5000 is written to the backup register after transferring the FW from
 	// the external flash to the STM32's internal memory
-	if((BKP_ReadBackupRegister(BKP_DR10) == 0x5000) ||
+	if((RTC_ReadBackupRegister(RTC_BKP_DR10) == 0x5000) ||
 			(FLASH_OTA_Update_SysFlag == 0x5000))
 	{
-		ApplicationAddress = CORE_FW_ADDRESS; //0x08005000
+		ApplicationAddress = CORE_FW_ADDRESS; //0x0800C000
 	}
 
 	// 0x0005 is written to the backup register at the end of firmware update.
 	// if the register reads 0x0005, it signifies that the firmware update
 	// was successful
-	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x0005) || 
+	else if((RTC_ReadBackupRegister(RTC_BKP_DR10) == 0x0005) || 
 			(FLASH_OTA_Update_SysFlag == 0x0005))
 	{
 		// OTA was complete and the firmware is now available to be transfered to
@@ -126,7 +136,7 @@ int main(void)
 	// 0x5555 is written to the backup register at the beginning of firmware update
 	// if the register still reads 0x5555, it signifies that the firmware update
 	// was never completed => FAIL
-	else if((BKP_ReadBackupRegister(BKP_DR10) == 0x5555) || 
+	else if((RTC_ReadBackupRegister(RTC_BKP_DR10) == 0x5555) || 
 			(FLASH_OTA_Update_SysFlag == 0x5555))
 	{
 		// OTA transfer failed, hence, load firmware from the backup address
@@ -173,25 +183,25 @@ int main(void)
 			case THIRD_RETRY:	// On 3rd retry attempt, try to recover using USB DFU Mode (Final attempt)
 				USB_DFU_MODE = 1;
 				FLASH_Erase();	// Erase the invalid firmware from internal flash
- 		                // fall through - No break at the end of case
-                        default:
+				// fall through - No break at the end of case
+			default:
 				BKP_DR1_Value = 0xFFFF;
 				break;
 			// toDO create a location in vector table for bootloadr->app - app->bootloader API.
 			// add version number to build, and mode (debug,release etc) in vector table
 			// Then make informed decisions on what to do on WDT timeouts
 			// for now ran something
-                        case ENTERED_SparkCoreConfig:
-                        case ENTERED_Main:
-                        case ENTERED_Setup:
-                        case ENTERED_Loop:
-                        case RAN_Loop:
-                        case PRESERVE_APP:
-                          BKP_DR1_Value = 0xFFFF;
-                          break;
+			case ENTERED_SparkCoreConfig:
+			case ENTERED_Main:
+			case ENTERED_Setup:
+			case ENTERED_Loop:
+			case RAN_Loop:
+			case PRESERVE_APP:
+				BKP_DR1_Value = 0xFFFF;
+				break;
 			}
 
-			BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
+			RTC_WriteBackupRegister(RTC_BKP_DR1, BKP_DR1_Value);
 
 			OTA_Flashed_ResetStatus();
 
@@ -203,9 +213,8 @@ int main(void)
 	{
 		// On successful firmware transition, BKP_DR1_Value is reset to default 0xFFFF
 		BKP_DR1_Value = 1;	//Assume we have an invalid firmware loaded in internal flash
-		BKP_WriteBackupRegister(BKP_DR1, BKP_DR1_Value);
+		RTC_WriteBackupRegister(RTC_BKP_DR1, BKP_DR1_Value);
 	}
-
 
 	//--------------------------------------------------------------------------
 	//    Check if BUTTON1 is pressed and determine the status
@@ -229,69 +238,84 @@ int main(void)
 			else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
 			{
 				// if pressed for >= 3 sec, enter USB DFU Mode
-				LED_SetRGBColor(RGB_COLOR_YELLOW);
+				//LED_SetRGBColor(RGB_COLOR_YELLOW);
+				led = LEDORANGE;
 				OTA_FLASH_AVAILABLE = 0;
 				REFLASH_FROM_BACKUP = 0;
 				FACTORY_RESET_MODE = 0;
 				USB_DFU_MODE = 1;
+				break;
 			}
 		}
 	}
 	//--------------------------------------------------------------------------
 
+	/* DEBUG */
+	// led = LEDORANGE;
+	// OTA_FLASH_AVAILABLE = 0;
+	// REFLASH_FROM_BACKUP = 0;
+	// FACTORY_RESET_MODE = 0;
+	// USB_DFU_MODE = 1;
+
+
 	if (OTA_FLASH_AVAILABLE == 1)
 	{
-		LED_SetRGBColor(RGB_COLOR_MAGENTA);
+		//LED_SetRGBColor(RGB_COLOR_MAGENTA);
+		led = LEDRED;
 		// Load the OTA Firmware from external flash
 		OTA_Flash_Reset();
 	}
 	else if (FACTORY_RESET_MODE)
 	{
-	        if (FACTORY_RESET_MODE == 1)
-	        {
-	            LED_SetRGBColor(RGB_COLOR_WHITE);
-	            // Restore the Factory Firmware from external flash
-	            FACTORY_Flash_Reset();
-	        } else {
-	            // This else clause is only for JTAG debugging
-	            // Break and set FACTORY_RESET_MODE to 2
-	            // to run the current code at 0x08005000
-	            FACTORY_RESET_MODE = 0;
-	            Finish_Update();
-	        }
+		if (FACTORY_RESET_MODE == 1)
+		{
+			//LED_SetRGBColor(RGB_COLOR_WHITE);
+			led = LEDBLUE;
+			// Restore the Factory Firmware from external flash
+			FACTORY_Flash_Reset();
+		} else {
+			// This else clause is only for JTAG debugging
+			// Break and set FACTORY_RESET_MODE to 2
+			// to run the current code at 0x08005000
+			FACTORY_RESET_MODE = 0;
+			Finish_Update();
+		}
 	}
 	else if (USB_DFU_MODE == 0)
 	{
 		if (REFLASH_FROM_BACKUP == 1)
 		{
-			LED_SetRGBColor(RGB_COLOR_RED);
+			//LED_SetRGBColor(RGB_COLOR_RED);
+			led = LEDRED;
 			// Restore the Backup Firmware from external flash
 			BACKUP_Flash_Reset();
 		}
 
 		// ToDo add CRC check
-                // Test if user code is programmed starting from ApplicationAddress
-		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFE0000 ) == 0x20000000)
+		// Test if user code is programmed starting from ApplicationAddress
+		if (((*(__IO uint32_t*)ApplicationAddress) & 0x2FFD0000 ) == 0x20000000)
 		{
-                  // Jump to user application
-                  JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
-                  Jump_To_Application = (pFunction) JumpAddress;
-                  // Initialize user application's Stack Pointer
-                  __set_MSP(*(__IO uint32_t*) ApplicationAddress);
+			// Jump to user application
+			JumpAddress = *(__IO uint32_t*) (ApplicationAddress + 4);
+			//JumpAddress = 0x800d855;
+			Jump_To_Application = (pFunction) JumpAddress;
+			// Initialize user application's Stack Pointer
+			__set_MSP(*(__IO uint32_t*) ApplicationAddress);
 
-                  // Do not enable IWDG if Stop Mode Flag is set
-                  if((BKP_ReadBackupRegister(BKP_DR9) >> 12) != 0xA)
-                  {
-                    // Set IWDG Timeout to 5 secs
-                    IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
-                  }
+			// Do not enable IWDG if Stop Mode Flag is set
+			if((RTC_ReadBackupRegister(RTC_BKP_DR9) >> 12) != 0xA)
+			{
+				// Set IWDG Timeout to 5 secs
+				IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+			}
 
-                  Jump_To_Application();
+			Jump_To_Application();
 		}
 	}
 	// Otherwise enters DFU mode to allow user to program his application
 
-	LED_SetRGBColor(RGB_COLOR_YELLOW);
+	//LED_SetRGBColor(RGB_COLOR_YELLOW);
+	led = LEDORANGE;
 
 	USB_DFU_MODE = 1;
 
@@ -303,46 +327,22 @@ int main(void)
 	// Unlock the internal flash
 	FLASH_Unlock();
 
-	// USB Disconnect configuration
-	USB_Disconnect_Config();
-
-	// Disable the USB connection till initialization phase end
-	USB_Cable_Config(DISABLE);
-
 	// Init the media interface
-	MAL_Init();
-
-	// Enable the USB connection
-	USB_Cable_Config(ENABLE);
-
-	// USB Clock configuration
-	Set_USBClock();
+	//MAL_Init();
 
 	// USB System initialization
-	USB_Init();
+	USBD_Init(&USB_OTG_FS_dev, USB_OTG_FS_CORE_ID, &USR_desc, &DFU_cb, &USR_cb);
 
 	// Main loop
 	while (1)
 	{
-		/*
-    	if(BUTTON_GetDebouncedTime(BUTTON1) >= 1000)
-    	{
-            //clear the button debounced time
-    		BUTTON_ResetDebouncedState(BUTTON1);
-            //make sure that there is no fw download in progress
-			if (DeviceState == STATE_dfuIDLE || DeviceState == STATE_dfuERROR)
-			{
-				Finish_Update();	//Reset Device to enter User Application
-			}
-    	}
-		 */
 	}
 }
 
 /*******************************************************************************
  * Function Name  : Timing_Decrement
  * Description    : Decrements the various Timing variables related to SysTick.
-                   This function is called every 1mS.
+				   This function is called every 1mS.
  * Input          : None
  * Output         : Timing
  * Return         : None
@@ -365,12 +365,12 @@ void Timing_Decrement(void)
 	}
 	else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE)
 	{
-		LED_Toggle(LED_RGB);
+		LED_Toggle(led);
 		TimingLED = 50;
 	}
 	else if(USB_DFU_MODE)
 	{
-		LED_Toggle(LED_RGB);
+		LED_Toggle(led);
 		TimingLED = 100;
 	}
 }
@@ -438,7 +438,7 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
 void assert_failed(uint8_t* file, uint32_t line)
 {
 	/* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	 ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 
 	/* Infinite loop */
 	while (1)

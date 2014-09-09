@@ -46,7 +46,9 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 void EXTI2_IRQHandler(void);
 void TIM1_UP_IRQHandler(void);
-void USB_LP_CAN1_RX0_IRQHandler(void);
+//void USB_LP_CAN1_RX0_IRQHandler(void);
+void OTG_FS_WKUP_IRQHandler(void);
+void OTG_FS_IRQHandler(void);
 
 #endif /* __STM32_IT_H */
 

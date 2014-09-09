@@ -29,8 +29,12 @@
 #include "main.h"
 #include "hw_config.h"
 #include "stm32_it.h"
-#include "usb_lib.h"
-#include "usb_istr.h"
+//#include "usb_lib.h"
+//#include "usb_istr.h"
+#include "usb_core.h"
+#include "usbd_core.h"
+#include "usb_conf.h"
+#include "usbd_dfu_core.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -42,6 +46,8 @@
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint16_t BUTTON_DEBOUNCED_TIME[];
+extern USB_OTG_CORE_HANDLE           USB_OTG_FS_dev;
+extern uint32_t USBD_OTG_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -235,10 +241,10 @@ void TIM1_CC_IRQHandler(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-	USB_Istr();
-}
+// void USB_LP_CAN1_RX0_IRQHandler(void)
+// {
+// 	//USB_Istr();
+// }
 
 /*******************************************************************************
  * Function Name  : PPP_IRQHandler
@@ -251,3 +257,29 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
  void PPP_IRQHandler(void) {
  }
  */
+/**
+  * @brief  This function handles EXTI15_10_IRQ Handler.
+  * @param  None
+  * @retval None
+  */
+
+void OTG_FS_WKUP_IRQHandler(void)
+{
+  if(USB_OTG_FS_dev.cfg.low_power)
+  {
+    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ; 
+    SystemInit();
+    USB_OTG_UngateClock(&USB_OTG_FS_dev);
+  }
+  EXTI_ClearITPendingBit(EXTI_Line18);
+}
+
+/**
+  * @brief  This function handles OTG_HS Handler.
+  * @param  None
+  * @retval None
+  */
+void OTG_FS_IRQHandler(void)
+{
+  USBD_OTG_ISR_Handler (&USB_OTG_FS_dev);
+}
