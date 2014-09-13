@@ -4,7 +4,6 @@ C_SRCS += \
 ../src/main.c \
 ../src/spi_if.c \
 ../src/stm32_it.c \
-../src/usb_desc.c \
 ../src/usbd_desc.c \
 ../src/usbd_req.c \
 ../src/usbd_core.c \
@@ -23,7 +22,6 @@ C_SRCS += \
 OBJS += \
 ./src/main.o \
 ./src/stm32_it.o \
-./src/usb_desc.o \
 ./src/usbd_desc.o \
 ./src/usbd_req.o \
 ./src/usbd_core.o \
@@ -42,7 +40,6 @@ OBJS += \
 C_DEPS += \
 ./src/main.d \
 ./src/stm32_it.d \
-./src/usb_desc.d \
 ./src/usbd_desc.d \
 ./src/usbd_req.d \
 ./src/usbd_core.d \

@@ -77,7 +77,7 @@
 #define USBD_CONFIGURATION_FS_STRING    "DFU Config"
 #define USBD_INTERFACE_FS_STRING        "DFU Interface"
 /**
-  * @}
+  * @}l
   */ 
 
 
