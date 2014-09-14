@@ -16,7 +16,6 @@ C_SRCS += \
 ../src/usbd_flash_if.c \
 ../src/usbd_spi_if.c \
 ../src/usbd_usr.c \
-../src/usbd_otp_if.c \
 ../src/usb_dcd_int.c
 
 OBJS += \
@@ -34,7 +33,6 @@ OBJS += \
 ./src/usbd_flash_if.o \
 ./src/usbd_spi_if.o \
 ./src/usbd_usr.o \
-./src/usbd_otp_if.o \
 ./src/usb_dcd_int.o
 
 C_DEPS += \
@@ -52,7 +50,6 @@ C_DEPS += \
 ./src/usbd_flash_if.d \
 ./src/usbd_spi_if.d \
 ./src/usbd_usr.d \
-./src/usbd_otp_if.d \
 ./src/usb_dcd_int.d
 
 

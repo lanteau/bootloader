@@ -972,13 +972,13 @@ void DFU_LeaveDFUMode(void *pdev)
     DeviceStatus[3] = 0;
 
     /* Disconnect the USB device */
-    DCD_DevDisconnect (pdev);
+    DCD_DevDisconnect(pdev);
 
     /* DeInitilialize the MAL(Media Access Layer) */
     MAL_DeInit();
     
-    /* Generate system reset to allow jumping to the user code */
-    NVIC_SystemReset();
+    /* Writes backup registers and resets */
+    Finish_Update();
    
     /* This instruction will not be reached (system reset) */
     return;

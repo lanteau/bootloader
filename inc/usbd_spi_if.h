@@ -39,7 +39,7 @@
 #define SPI_START_ADD                 0x00000000 /* Dummy start address */
 #define SPI_END_ADD                   (uint32_t)(SPI_START_ADD + (2048 * 1024)) /* Size = 2048KB */
 
-#define SPI_IF_STRING                 "@sst25vf flash /0x00000000/01*002Kg,03*001Kg"
+#define SPI_IF_STRING                 "@External Flash /0x00000000/512*004Kg"
 
 extern DFU_MAL_Prop_TypeDef DFU_Spi_cb;
 
