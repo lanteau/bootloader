@@ -114,6 +114,9 @@ int main(void)
 
 	//--------------------------------------------------------------------------
 
+
+	FLASH_OTA_Update_SysFlag = 0x5000;
+	Save_SystemFlags();
 	// 0x5000 is written to the backup register after transferring the FW from
 	// the external flash to the STM32's internal memory
 	if((RTC_ReadBackupRegister(RTC_BKP_DR10) == 0x5000) ||
@@ -238,8 +241,7 @@ int main(void)
 			else if(!USB_DFU_MODE && TimingBUTTON <= 7000)
 			{
 				// if pressed for >= 3 sec, enter USB DFU Mode
-				//LED_SetRGBColor(RGB_COLOR_YELLOW);
-				led = LEDORANGE;
+				LED_SetRGBColor(RGB_COLOR_YELLOW);
 				OTA_FLASH_AVAILABLE = 0;
 				REFLASH_FROM_BACKUP = 0;
 				FACTORY_RESET_MODE = 0;
@@ -260,8 +262,7 @@ int main(void)
 
 	if (OTA_FLASH_AVAILABLE == 1)
 	{
-		//LED_SetRGBColor(RGB_COLOR_MAGENTA);
-		led = LEDRED;
+		LED_SetRGBColor(RGB_COLOR_MAGENTA);
 		// Load the OTA Firmware from external flash
 		OTA_Flash_Reset();
 	}
@@ -269,8 +270,7 @@ int main(void)
 	{
 		if (FACTORY_RESET_MODE == 1)
 		{
-			//LED_SetRGBColor(RGB_COLOR_WHITE);
-			led = LEDBLUE;
+			LED_SetRGBColor(RGB_COLOR_WHITE);
 			// Restore the Factory Firmware from external flash
 			FACTORY_Flash_Reset();
 		} else {
@@ -285,8 +285,7 @@ int main(void)
 	{
 		if (REFLASH_FROM_BACKUP == 1)
 		{
-			//LED_SetRGBColor(RGB_COLOR_RED);
-			led = LEDRED;
+			LED_SetRGBColor(RGB_COLOR_RED);
 			// Restore the Backup Firmware from external flash
 			BACKUP_Flash_Reset();
 		}
@@ -306,7 +305,7 @@ int main(void)
 			if((RTC_ReadBackupRegister(RTC_BKP_DR9) >> 12) != 0xA)
 			{
 				// Set IWDG Timeout to 5 secs
-				IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
+				//IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
 			}
 
 			Jump_To_Application();
@@ -314,8 +313,7 @@ int main(void)
 	}
 	// Otherwise enters DFU mode to allow user to program his application
 
-	//LED_SetRGBColor(RGB_COLOR_YELLOW);
-	led = LEDORANGE;
+	LED_SetRGBColor(RGB_COLOR_YELLOW);
 
 	USB_DFU_MODE = 1;
 
@@ -365,12 +363,12 @@ void Timing_Decrement(void)
 	}
 	else if(FACTORY_RESET_MODE || REFLASH_FROM_BACKUP || OTA_FLASH_AVAILABLE)
 	{
-		LED_Toggle(led);
+		LED_Toggle(LED_RGB);
 		TimingLED = 50;
 	}
 	else if(USB_DFU_MODE)
 	{
-		LED_Toggle(led);
+		LED_Toggle(LED_RGB);
 		TimingLED = 100;
 	}
 }

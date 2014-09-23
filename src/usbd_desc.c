@@ -54,9 +54,9 @@
   * @{
   */ 
 
-#define USBD_VID                        0x0483
+#define USBD_VID                        0x1D50
 
-#define USBD_PID                        0xDF11
+#define USBD_PID                        0x607F
 
 
 /** @defgroup USB_String_Descriptors

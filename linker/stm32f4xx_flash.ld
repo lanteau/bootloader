@@ -91,13 +91,9 @@ SECTIONS
 	    /* This is used by the startup in order to initialize the .data secion */
    	 _sidata = _etext;
     } >FLASH
-    
-    /* MEMORY_ARRAY */
-    .ROarraySection :
-    {
-            *(.ROarraySection)                          
-    } >MEMORY_ARRAY
-     
+
+    /* used by the startup to initialize data */
+    _sidata = .;
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
@@ -207,6 +203,8 @@ SECTIONS
     /* remove the debugging information from the standard libraries */
     DISCARD :
     {
+     libc.a ( * )
+     libm.a ( * )
      libgcc.a ( * )
      }
   

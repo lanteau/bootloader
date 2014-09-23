@@ -170,7 +170,7 @@ void USBD_USR_DeviceResumed(void)
 */
 void USBD_USR_DeviceConnected (void)
 {
-  LED_On(LEDGREEN);
+  LED_On(LED_USER);
 }
 
 
@@ -182,7 +182,7 @@ void USBD_USR_DeviceConnected (void)
 */
 void USBD_USR_DeviceDisconnected (void)
 {
-  LED_Off(LEDGREEN);
+  LED_Off(LED_USER);
 }
 /**
 * @}
